@@ -1,19 +1,41 @@
 {
 	"version": "0.2.0",
 	"configurations": [{
-			"name": "Run Extension",
+			"name": "Run VSCode Extension",
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}/vscode-completions/",
-				"${workspaceFolder}/client-server-example",
+				"${workspaceFolder}/local-repository",
 				"--disable-extensions"
 			],
 			"outFiles": [
 				"${workspaceFolder}/vscode-completions/out/**/*.js"
 			],
-			"preLaunchTask": "npm: watch"
+			"preLaunchTask": "watch-vscode",
+            "env": {
+                "OPENAI_API_KEY": "OPENAI_API_KEY"
+            }
+		},
+		{
+			"name": "Run LSP Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/lsp-completions/lsp-client/",
+				"${workspaceFolder}/local-repository",
+				"--disable-extensions"
+			],
+			"outFiles": [
+				"${workspaceFolder}/lsp-completions/lsp-client/out/**/*.js"
+			],
+			"preLaunchTask": "watch-lsp",
+            "env": {
+				"HF_TOKEN": "HF_TOKEN",
+                "OPENAI_API_KEY": "OPENAI_API_KEY"
+            }
 		}
 	]
 }

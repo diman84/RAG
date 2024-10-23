@@ -1,0 +1,4 @@
+pygls
+lsprotocol
+transformers
+huggingface_hub

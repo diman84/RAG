@@ -1,14 +1,51 @@
-# Overview
+Retrieval-Augmented Generation
+=================
+  
+  * [RAG Overview](#rag-overview)
+  * [(Code) Generation](#code-generation)
+    * [Operational Context](#operational-context)
+    * [Environment Context](#environment-context)
+    * [Task Context](#task-context)
+    * [User Context](#user-context)
+    * [Limitations](#limitations)
+  * [Existing Solutions](#existing-solutions)
+    * [Github Copilot](#github-copilot)
+    * [Cursor](#cursor)
+    * [Continue.Dev](#continuedev)
+  * [AI Dev Tools](#ai-dev-tools)
+    * [LLamaIndex](#llamaindex)
+    * [LangChain](#langchain)
+    * [Semantic Kernel](#semantic-kernel)
+  * [Data Ingestion](#data-ingestion)
+    * [Loading documents](#loading-documents)
+    * [Chunking](#chunking)
+    * [Embeddings](#embeddings)
+    * [Advanced Indexing Strategies](#advanced-indexing-strategies)
+  * [Data Retrieval](#data-retrieval)
+    * [Vector Search](#vector-search)
+    * [Full-Text Search](#full-text-search)
+    * [Hybrid Search](#hybrid-search)
+    * [Advanced Search Strategies](#advanced-search-strategies)
+    * [Vector Stores](#vector-stores)
+  * [LLMs](#llms)
+    * [API based](#api-based)
+    * [Local](#local)
+    * [Special purpose](#special-purpose)
+  * [Evaluation](#evaluation)
+    * [Langchain](#langchain-1)
+    * [Ragas](#ragas)
+    * [ARES](#ares)
+    * [OpenAI Evals](#openai-evals)
+    * [RaLLe](#ralle)
+  * [Graph RAG](#graph-rag)
+  * [Explore Python Workbook](#explore-python-workbook)
 
-TODO: Write a project description
-
-TODO: Add a table of contents
-
-TODO: RAG GRAPH from langchain or MS presentation
+# RAG Overview
+RAG stans for Retrieval Augmented Generation and is a technique that combines the power of retrieval and generation models to provide more accurate and relevant results. From high level it consists of 3 stages - **Data Ingestion**, **Data Retrieval** and **Data Generation**. In this document we will provide an overview of the RAG technique, its components, existing solutions and tools, and best practices for building RAG workflows.
 
 ![Basic RAG Diagram](./images/rag_1.svg)
 
-## Code Generation
+## (Code) Generation
 Context of LLM prompt is limited and it is important to provide the right context to the model. Fore code suggestions, we should define what data should we include in the prompt, how to rank its relevancy. In common development experience we can define the following data sources that can be used to define the context
 
 ### Operational Context
@@ -87,6 +124,8 @@ https://python.langchain.com/docs/concepts
 
 ![LangChain](./images/langchain.png)
 
+To learn now to use langchain APIs, for which tasks and workloads you can check chat, specifically design for the purpose https://chat.langchain.com/ 
+
 ### Semantic Kernel
 Semantic Kernel is a lightweight, open-source development kit that lets you easily build AI agents and integrate the latest AI models into your **C#**, **Python**, or **Java** codebase
 
@@ -122,53 +161,88 @@ Chunking Strategies
       - Preserve sentence or paragraph boundaries
   - **Semantic** - group the content by semantic meaning, i.e. split by topics, entities, etc.
 
-Here are some examples of chunking strategies and their performance:
-
-| Chunk Strategy | Recall@50 |
-|----------------|-----------|
-|512 tokens, break at token boundary|40.9|
-|512 tokens, preserve sentence boundaries|42.4|
-|512 tokens, with 10% overlapping chunks|43.1|
-|512 tokens, with 25% overlapping chunks|43.9|
-
-
 ## Embeddings
-Text embeddings measure the relatedness of text strings. Embeddings are commonly used for:
+Embeddings are effectively representations of the data in a high-dimensional vector space. In Transformer-based models embedding vectors are representing semantical meaning of certain chunk of data. Base unit of data (text) representation is a token, the building block of the text, say a word or a subword and depends on the tokenization strategy for certain model.
 
-  - Search (where results are ranked by relevance to a query string)
+To be able to process inputs, models feature vocabulary, that is a set of tokens that model can understand, represented by their embedding vectors and are learned during the training process. One of main metrics of embedding models are
+ - *dimension size* - typical models have around 768 and 2K, larger and more specialized models can go up to 4K or beyond
+ - *vocabulary size* - standard vocabulary sizes for monolingual models are around 30K-60K, multilingual models can go up to 250K
+ - *context window* - standard models handle ~4K tokens, advanced models can handle up to 128K tokens, and the latest cutting-edge models can go up to 1 million tokens
+
+![Embeddings](./images/embeddings_visual.png)
+
+While using vocabularies we can measure relatedness of the tokens, model are also capable of generating embeddings for the whole text (say, set of tokens) by using several strategies, that  that is supposed to reflect the meaning of the entire sequence. Most common pooling strategies are `Mean Pooling` (element-wise arithmetic mean of the token-level embeddings), `Max Pooling` (element-wise max of the token-level embeddings), `CLS Token Pooling` (use the embedding of the [CLS] token and typically used for classification tasks)
+
+<table>
+<tr>
+  <td>
+
+  ![Pooling](./images/pooling.png)
+
+  </td>
+  <td>
+
+  | **Token**  | **Embedding (3 dimensions)**  |
+  |------------|-------------------------------|
+  | "The"      | [0.1, 0.2, 0.5]               |
+  | "cat"      | [0.6, 0.4, 0.3]               |
+  | "sat"      | [0.3, 0.8, 0.7]               |
+  | "on"       | [0.2, 0.3, 0.6]               |
+  | "the"      | [0.5, 0.4, 0.2]               |
+  | "mat"      | [0.7, 0.9, 0.1]               |
+  | **Mean**   | **[0.4, 0.5, 0.4]**           |
+  | **Max**    | **[0.7, 0.9, 0.7]**           |
+
+  </td>
+</tr>
+</table>
+
+Another approach is `self-attention`, which goal is to update the vector for every token in the input in relation to the others, so that all embeddings better capture the context, for example apply *Positional Encoding*. This *Attention Pooling* technique mostly used in fine-tuned models for specific tasks as it requires more processing workloads.
+
+
+<table>
+<tr>
+  <td>
+
+  ![alt text](./images/attention.png)
+  </td>
+  <td>
+
+| **Token**  | **Token Embedding (4 dimensions)** | **Positional Encoding (4 dimensions)** | **Final Embedding (Token Embedding + Positional Encoding)** |
+|------------|-------------------------------------|----------------------------------------|--------------------------------------------------------------|
+| "The"      | [0.1, 0.2, 0.3, 0.4]               | [0.00, 0.00, 1.00, 1.00]              | [0.10, 0.20, 1.30, 1.40]                                      |
+| "cat"      | [0.5, 0.6, 0.7, 0.8]               | [0.84, 0.54, 0.54, 0.84]              | [1.34, 1.14, 1.24, 1.64]                                      |
+| "sat"      | [0.9, 1.0, 1.1, 1.2]               | [0.90, 0.43, 0.43, 0.90]              | [1.80, 1.43, 1.53, 2.10]                                      |
+| "on"       | [0.2, 0.3, 0.4, 0.5]               | [0.14, 0.98, 0.98, 0.14]              | [0.34, 1.28, 1.38, 0.64]                                      |
+| "the"      | [0.6, 0.7, 0.8, 0.9]               | [0.79, 0.59, 0.59, 0.79]              | [1.39, 1.29, 1.39, 1.69]                                      |
+| "mat"      | [0.3, 0.4, 0.5, 0.6]               | [0.87, 0.49, 0.49, 0.87]              | [1.17, 0.89, 0.99, 1.47]                                      |
+
+
+  </td>
+</tr>
+</table>
+
+Embeddings are crucial part of Transformer models, and while LLMs are also capable of generationg embeddings, they are not always the best choice for the task. Embeddings that are produced by Embedding models measure the relatedness of text strings and capture their contextual meaning, thus they are commonly used for:
+
+  - Search (where results are ranked by similarity to a query string)
   - Clustering (where text strings are grouped by similarity)
   - Recommendations (where items with related text strings are recommended)
   - Anomaly detection (where outliers with little relatedness are identified)
   - Diversity measurement (where similarity distributions are analyzed)
   - Classification (where text strings are classified by their most similar label)
 
-An embedding is a vector of floating point numbers. The *distance* between two vectors measures their relatedness. Small distances suggest high relatedness and large distances suggest low relatedness.
+LLM vendors provide a variaty of embedding models for different purposes that differ in vector dimension size and context window size. Some models are sprecifically designed for embeddings, some of them provide embeddings along with generation capabilities. Here are some of the most popular models
 
-![Embeddings](./images/embeddings_visual.png)
+  - **OpenAI** - 2nd and 3rd generation models to be used for search, clustering, etc. (https://platform.openai.com/docs/guides/embeddings/embedding-models). Provided via API
+  - **Sentence Transformers (a.k.a SBERT)** - state-of-the-art text and image embedding models, applicable for a wide range of tasks, such as *semantic textual similarity*, semantic search, clustering, classification, paraphrase mining, and more with dimentionality up tp 4K (https://sbert.net/)
+  - **Cohere** - provides separate embedding model for english and multilingual text via API, that also features *embeddings purpose* parameter for embedding endpoints and has *Classification* endpoint that allows to classify the text based on examples given (https://docs.cohere.com/docs/models#embed)
+  - **Llama 3.\*** - new state-of-the-art generic purpose model from Meta available in 8B, 70B and 405B parameter sizes (https://ollama.com/library/llama3.1)
+  - **Voyage AI** (Anthropic) - embedding model that is offered by *Anthropic*, provides state-of-the-art embedding models and offers customized models for specific industry domains such as finance(`voyage-finance-2`), law (`voyage-law-2`), healthcare and code (`voyage-code-2`). Its family has models with up to 1536 dimensions and 16K context size with purpose of text and code retreival (https://docs.anthropic.com/en/docs/build-with-claude/embeddings)
+  - **Gemini** - provides embeddings models (`text-embedding-004`) for words, phrases, and sentences(https://ai.google.dev/gemini-api/docs/embeddings)
 
-LLM vendors provide a variaty of embedding models for different purposes that differ in vector dimension size and context window size. The total parameter size can be calculates as a product of vector dimension and number of words (tokens) in the model. Some models are sprecifically designed for embeddings, some of them provide embeddings along with generation capabilities. Here are some of the most popular models
-
-  - **OpenAI** - 2nd and 3rd generation models with dimension size of 1536 and 3072, 8191 context size (https://platform.openai.com/docs/guides/embeddings/embedding-models)
-  - **Sentence Transformers (a.k.a SBERT)** - state-of-the-art text and image embedding models, applicable for a wide range of tasks, such as *semantic textual similarity*, semantic search, clustering, classification, paraphrase mining, and more. It features  768 dimensions and 512 tokens context size (https://sbert.net/)
-  - **Cohere** - provides separate embedding model for english and multilingual text with up to 1024 dimensions and 512 tokens context size (https://docs.cohere.com/docs/models#embed)
-  - **Llama 3.1** - new state-of-the-art model from Meta available in 8B, 70B and 405B parameter sizes. Featues dimension size up to 16K and context length up to 130K (https://ollama.com/library/llama3.1)
-  - **Codellama** - LLM that can use text prompts to generate and discuss code. Features 768 dimensions and 512 tokens context size (https://ollama.com/library/codellama)
-  - **Starcoder** - 15.5B parameter models trained on 80+ programming languages and  GitHub code, it features upto 6K dimension size and a context window of up to 16K tokens
-  - **Stability.ai** - provides a wide range of models for different purposes, i.e. code generation (*Stable Code*), text generation, etc. (https://stability.ai/stable-lm)
-  - **Voyage AI** - embedding model that is offered by *Anthropic*, provides state-of-the-art embedding models and offers customized models for specific industry domains such as finance and healthcare. Its family has models with up to 1536 dimensions and 16K context size with purpose of text and code retreival (https://docs.anthropic.com/en/docs/build-with-claude/embeddings)
-
-
-  Models are provided in different ways, some of them are available as API services, some are available as local libraries. Here are some of the most popular services
-  - **OpenAI** - provides API for embedding text into vector representation with OpenAI model provided
-  - **Cohere** - provides API for embedding text into vector representation with Cohere model and *embeddings purpose* provided. It also features *Classification* endpoint that allows to classify the text based on examples given and embedding model
-  - **Ollama** - is an open-source project that serves as a for running LLMs on your local machine, it provides possibility to pull a variaty of models (https://ollama.com/library), for example
-    - all-minilm - Sentence Transformers (a.k.a SBERT) 
-    - llama family
-    - mistral
-    - starcoder
-    - qwen family
-  - **Hugging Face** - a platform where models from different organizations are hosted and provided via API. A wide range of models are available https://huggingface.co/models 
-  - **Anthropic** - provides API for embedding text into vector representation with *Voyage AI* model provided (it includes domain specific *voyage-law*, *voyage-healthcare* models). *Voyage AI* in turn, also provides embedding API with other embedding models capabilities
+While *OpenAI*, *Cohere*, *Voyage AI*, *Gemini* and some other vendors provide embeddings via API, there are also open-source projects that allow to run embeddings on your local machine or in the cloud
+  - **Ollama** - is an open-source project that serves a for running LLMs on your local machine and provides possibility to pull a variaty of models (https://ollama.com/library)
+  - **Hugging Face** - provides a wide range of machine learning models, including embeddings models (https://huggingface.co/models) that can be run on your local machine wih help of libraries or in the cloud via inference API
 
 ### Advanced Indexing Strategies 
 
@@ -189,9 +263,13 @@ In order to improve quality of the search results, we can use advanced indexing 
   - Document Intelligence - preprocess data with AI (e.g. table detection, html removal, etc.)  
 
 ## Data Retrieval
+<br>
+
+![Data Retrieval](./images/rag_5.svg)
+<br>
 
 ### Vector Search
-The task of a vector search is to identify and retrieve a list of vectors (embeddings) that are closest to the given vector (embedding of your query), using a distance metric and a search algorithm.
+The task of a vector search is to identify and retrieve a list of vectors (embeddings) that are closest to the given vector (embedding of your query), using a distance metric and a search algorithm. The *distance* between two vectors measures their relatedness. Small distances suggest high relatedness and large distances suggest low relatedness.
 
 **Symmetric vs Asymmetric Search**<br>
 For **symmetric semantic search** your query and the entries in your corpus are of about the same length and have the same amount of content. An example would be searching for similar questions.
@@ -206,7 +284,7 @@ Despite of the model used, there are several search algorithms that differ in pe
 This brute force algorithm that is comparing every data vector in the database to the query vector. It is the most precise but also the most computationally expensive.
 
 *Approximate Nearest Neighbors*<br>
-This algorithm is using inner structures to reduce the number of comparisons. It is less precise but much faster than k-NN. However, the results are not necessarily exact, it is possible that some vectors with high similarity will be missed. Here is example of how data can be partitioned for faster search.
+This algorithm is using inner structures (**trees**, **graphs**, **clustering**, **hashing**, **compressed vectors**) to reduce the number of comparisons. It is less precise but much faster than k-NN. However, the results are not necessarily exact, it is possible that some vectors with high similarity will be missed. Here is example of how data can be partitioned for faster search.
 
 ![ANN](./images/ann.png)
 
@@ -214,9 +292,10 @@ For all ANN methods, there are usually one or more parameters to tune that deter
 
 ![HNSW](./images/hnsw.png)
 
+*SVM (Support Vector Machine)*<br>
+This supervised algorithm is used for classification, regression and outliers detectiontasks, but it can also be used for similarity search. It is not as common as k-NN or ANN, but it can be useful in some cases.
 
-  - SVM (Support Vector Machine)
-
+--- 
 
 Depending on the model used, vectors can have thousands of dimensions, some similarity measures are more compute-heavy than others. For that reason, we have different distance metrics that balance the speed and accuracy of calculating distances between vectors.
 
@@ -238,22 +317,6 @@ Full-Text (lexical) search generic concept is to tokenize the corpus and the que
 
 To effectively use full-text search capabilities you can consider some popular search engines and services like **ElasticSearch** and **Solr** along with cloud-based services like **Algolia**, **Azure AI Search**, **AWS CloudSearch**, and **Google Cloud Search**.
 
-### Filtering
-Filtering can bring significant improvement to the search results. It can be done based on the context of the query with the following strategies
-
-**Metadata Filtering**<br>
-Construct queries to leverage metadata provided for the documents in the vector store. Metadata can be used to filter the documents before the search is performed.
-
-**Query Analysis and Self-Querying**<br>
-The filter for documets metadata can be defined based on the context and can involve LLM capabilities to specify certain fields or values that should be present in the document.
-
-![Self Query](./images/self-query.png)
-
-**Routing**<br>
-Based of the contextual knowlegde, you can route the query to the specific vector store or search engine that is most relevant to the query. For these purposes you can use heuristics, strict logic models or even LLM
-
-![Routing](./images/routing.png)
-
 ### Hybrid Search
 The approach that combines both vector search and full-text search usually referenced as **Hybrid Search** and allows to leverage the power of both approaches.
 | Feature                    | Full-text search | Pure Vector search | Hybrid search |
@@ -269,7 +332,40 @@ The approach that combines both vector search and full-text search usually refer
 - **❌** feature is not supported.
 - **🟡** partial or limited support (in the case of multi-lingual search for full-text search).
 
-### Re-Ranking
+<br>
+
+### Advanced Search Strategies
+
+<br>
+
+![Advanced Search Strategies](./images/rag_4.svg)
+
+<br>
+
+**Metadata Filtering**<br>
+Filtering can bring significant improvement to the search results. It can be done in the context of the query, where you can filter the documents based on the metadata provided in the vector store. With this approach you can narrow down the documents that are more relevant to the query and improve performance of the search.
+
+**Query Analysis and Self-Querying**<br>
+The filter for documets metadata can be defined based on the context and can involve LLM capabilities to specify certain fields or values that should be present in the document.
+
+![Self Query](./images/self-query.png)
+
+**Source Routing**<br>
+Based of the contextual knowlegde, you can route the query to the specific vector store or search engine that is most relevant to the query. For these purposes you can use heuristics, strict logic models or even LLM.
+
+![Source Routing](./images/s-routing.png)
+
+**Prompt Routing**<br>
+Prompt structure can be very dependent on query context and on query itself. You can leverage search or LLM capabilities to select most relevant prompt or/and route the prompt to the specific LLM model.
+
+![Prompt Routing](./images/p-routing.png)
+
+**Query Reformulation**<br>
+User queries are not always perfect, futhermore, they are not aware of your dat structure and the content available. You can use LLM capabilities to reformulate the query to use different sources or to provide more relevant results.
+
+![Query Reformulation](./images/query-reform.png)
+
+**Re-Ranking and Fusion**<br>
 When multiple sources are used for data retrieval, it is important to re-rank the results to provide the most relevant data to the user. Re-ranking can be done based on the following strategies
 
   - **Vector weighting** - when reranking results, we can set the importance of each resultset by setting the weight multiplier for each searh  score.
@@ -278,22 +374,10 @@ When multiple sources are used for data retrieval, it is important to re-rank th
   - **Semantic Re-Ranking** - is a re-ranking algorithm that uses semantic similarity to update relevance score of search results.
     - **Cross-Encoding (x-enc)** - cross-encoder concatenates text pairs (query and doc) into a single sequence (e.g., [CLS] Text1 [SEP] Text2 [SEP]) and fed into the transformer model, the model processes the entire concatenated sequence and produces a single output (usually from the [CLS] token or a classification head), which represents the similarity or relevance between texts ([example](https://cookbook.openai.com/examples/search_reranking_with_cross-encoders)).
     - **ColBERT (Contextualized Late Interaction over BERT)** - uses a late interaction mechanism, where the token-level embeddings of queries and documents are computed separately. These embeddings are then compared using a MaxSim operation during retrieval, which takes the maximum similarity between each query token and all document tokens.
+    ![alt text](./images/colbert.png)
     - **Cohere** and **Voyage AI** - is a re-ranking API services that allows to re-rank documents with help of specifically trained `rerank-*` models (https://docs.cohere.com/docs/rerank-2, https://docs.voyageai.com/docs/reranker)
 
-Re-Ranking significantly improves the quality of the search results.
-|                           | Acc @1 | Acc @3 | R @3 | CNS @1 |
-|---------------------------|--------|--------|-------|--------|
-| Vector search (baseline)   | 0.63   | 0.87   | 0.81  | 0.71   |
-| w/ Re-ranker x-enc         | **0.88**   | **0.99**   | 0.77  | **0.85**   |
-| w/ Metadata                | 0.66   | 0.92   | **1.00**  | 0.76   |
-| w/ Metadata and x-enc      | **0.89**   | **1.00**   | **1.00**  | **0.89**   |
-
-- Acc @1 - Accuracy at 1
-- Acc @3 - Accuracy at 3
-- R @3 - Recall at 3
-- CNS @1 - Consistency at 1
-
-The final schem of data retrieval that will significantly improve the quality of the search results and context understanding is shown below
+The final flow of data retrieval that will significantly improve the quality of the search results and context understanding is shown below (based on the example of the [Azure AI Search](https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking) service).
 
 <p align="center">
   <img src="./images/hybrid.svg" alt="Hybrid Search"/>
@@ -337,51 +421,106 @@ Some common vector stores
   - LlamaCpp (CPU optimized)
 
 ### Special purpose
-  - **Starcoder** - Model is intended for code completion, they are not instruction models, commands like "Write a function that computes the square root." do not work well. Model natively supports Fill-in-the-middle prompts and can be fine-tuned for specific tasks(https://huggingface.co/bigcode/starcoder)
+  - **Starcoder** - Model is intended for code completion, they are not instruction models, commands like "Write a function that computes the square root." do not work well. Model natively supports Fill-in-the-middle prompts and can be fine-tuned for specific tasks (https://huggingface.co/bigcode/starcoder)
+  - **Stability AI** - (https://huggingface.co/stabilityai/stable-code-3b)
 
-Code
+### Context window, parameters and performance
+Another important aspect of LLMs is the context window and the number of parameters. The more parameters the model has, the more information it can store and process, thus driving multi-language and multi-modal capabilities. 
+
+The context window is the number of tokens the model can accept at once. The larger the context window, the more information the model can use to generate the output.
+
+However, the more parameters and context model has, the more computationally expensive it is to run, and the more memory and costs it requires. For performance-critical applications, it is important to balance the model capabilities with the available resources and cost.
+
+  - **OpenAI** - A family of GPT models, featuring high-intelligence real time processing `GPT-4o` and `OpenAi o1` "thinking" model, providing context length up to 128K and offered via API and services
+  - **Claude** - Family of models from Anthropic, with multi midal and multi language capabilities with defferent offerings for speed and performance
+  - **Gemini** - Natively multimodal LLM family, with an updated long context window of up to two million tokens and provided via API
+  - **Llama 3.\*** - Leading in open-source LLMs, available in sizes from 1B up to 405B (3.2),  (https://www.llama.com/), available to download and run on-premises
+  - **Codellama** - LLM that can use text prompts to generate and discuss code (https://ollama.com/library/codellama)
+  - **Starcoder** - 15.5B parameter models trained on 80+ programming languages and  GitHub code, it features upto 6K dimension size and a context window of up to 16K tokens
+  - **Stability.ai** - provides a wide range of models for different purposes, i.e. code generation (*Stable Code*), text generation, etc. (https://stability.ai/stable-lm)
+
+### Prompts and Features
+LLMs can have different approaches of how to construct the promps, most of them however are based on the role models with chat experience. Unlike structures language, prompts cannot guarantee stable output, but it is possible do make it more consistent by using vendor recommendations and capabilities, for example
+
+  - **Structured Output** - Feature provided by OpenAI API, designed to ensure model-generated outputs will exactly match JSON Schemas provided by developers.
+  - **Tool Calling** - Open AI API feature, allowing developers to describe functions to gptmodels, and have the model intelligently choose to output a JSON object containing arguments to call those functions.
+  - **Fill-in-the-middle** - Feature provided by Starcoder and others, allowing to provide a partial code snippet and have the model complete it.
+
+For general purpose models we can follow some common suggestions:
+  - Be specific (dierectly specify the language, purpose, context, desired output)
+  - Use examples (provide examples of the code suggestions, the data)
+  - Use structured output if needed and possible
+  - Provide system instructions if possible, use role-based prompts
 
 ## Evaluation
+The evaluation of the RAG system is crucial to understand the quality of the results and to improve the system. The evaluation can be done on different levels, and for any of them we can appy commonly used metrics.
 
-Metrics
-  - RGB
-  - RECALL
+  - **Precision** - focuses on how correct the positive predictions were.
+  $$
+  \text{Precision} = \frac{\text{True Positives}}{\text{True Positives} + \text{False Positives}}
+  $$
 
-### Langchain
 
-https://autoevaluator.langchain.com/
 
-### Ragas
-Retrieval Augmented Generation
-  - Context Precision
-  - Context Recall
-  - Context Entities Recall
-  - Noise Sensitivity
-  - Response Relevancy
-  - Faithfulness
+  - **Recall**  - focuses on how many actual positives were captured.
+  $$
+  \text{Recall} = \frac{\text{True Positives}}{\text{True Positives} + \text{False Negatives}}
+  $$
 
-### ARES
 
-### OpenAI Evals
+  - **Accuracy** - looks at the overall correctness of both positive and negative predictions.
+  $$
+  \text{Accuracy} = \frac{\text{True Positives} + \text{True Negatives}}{\text{Total Predictions}}
+  $$
 
-### RaLLe
+But as long as tasks in RAG has different nature, some specific metrics can be used to evaluate the quality of results.
 
-https://github.com/yhoshi3/RaLLe
+**Generation**<br>
+  - `Faithfulness` - measures the factual consistency of the generated answer against the given context. It is calculated from answer and retrieved context
+    $$
+    \text{Faithfulness} = \frac{\text{Number of claims in generated answer that can be inferred from given context}}{\text{Total number of claims in generated answer}}
+    $$
+  - `Response Relevancy` - focuses on assessing how pertinent the generated answer is to the given prompt, for example
 
-## Advanced RAG
+    > Question: *Where is France and what is it's capital?*
+    > Low relevance answer: *France is in western Europe.*
+    > High relevance answer: *France is in western Europe and Paris is its capital.*
 
-  - GraphRAG
-  - MMR (Maximal Marginal Relevance)
-  - Self query and query reformulation 
-  - Preprocess data with AI (e.g. document intelligence, metadata extraction, table detection, etc.)
+  - `Sensibleness` - measure of how *logical*, *coherent*, and *reasonable* the responses generated by a model are, based on the input provided.
+    - Coherence example
+      > Input: *"What is the capital of France?"*
+      > Sensible Response: *"The capital of France is Paris."*
+      > Non-Sensible Response: *"France is a type of food."*
+    - Relevance example
+      > Input: *"Tell me about machine learning."*
+      > Sensible Response: *"Machine learning is a field of artificial intelligence focused on building systems that can learn from data."*
+      > Non-Sensible Response: *"Machine learning is fun to play with cats."*
+    - Contradiction example
+      > Input: *"Is water wet?"*
+      > Sensible Response: *"Water is considered wet because it can make things damp."*
+      > Non-Sensible Response: *"Water is dry because it flows easily."*
 
-## Start
+**Retrieval**<br>
+  - `Context Precision` - measures the proportion of relevant chunks, calculated as the mean of the `precision@k` for each chunk in the context.
+  - `Context Recall` - measures how many of the relevant documents (or pieces of information) were successfully retrieved.
+  - `Normalized Discounted Cumulative Gain (NDCG)` -  common information retrieval metric that provides a score between 0 and 100 based on how well a retrieval system (1) found the best results and (2) put those results in the ideal order
+ 
+ **Indexing**<br>
+  Most impactful measure for indesing is how correct vectors are calculated with respect of latency and search results, so core questinos is when do ANN Accuracy errors (ANN algorithms trade off accuracy and speed) affect Information Retrieval errors?
+
+For evaulation of RAG systems we can use some of the most popular tools and frameworks, for example
+  - **Ragas** - toolkit for evaluating and optimizing Large Language Model (LLM) applications, features *Objective Metrics* evaluation *Test data generation*, etc. (https://ragas.io/)
+  - **Langchain** - provides a set of tools for evaluation and offers `LangSmith` platform. Also has some convenient tools like https://autoevaluator.langchain.com/
+  - **Open AI** - provides a set of tools for evaluation of the models, including *Dataset Generation*, *Eels definition an run*, etc. (https://platform.openai.com/docs/guides/evals)
+  - **RaLLe** - accessible framework for developing and evaluating retrieval-augmented large language models(https://github.com/yhoshi3/RaLLe)
+  - **ARES** - Automated Evaluation Framework for Retrieval-Augmented Generation Systems (https://github.com/stanford-futuredata/ARES)
+
+
+## Graph RAG
+https://microsoft.github.io/graphrag/ 
+
+## Explore Python Workbook
 
 ```
 pip install -r requirements.txt
 ```
-
-### Limitations
-
-
-
