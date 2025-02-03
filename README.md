@@ -236,13 +236,14 @@ LLM vendors provide a variaty of embedding models for different purposes that di
   - **OpenAI** - 2nd and 3rd generation models to be used for search, clustering, etc. (https://platform.openai.com/docs/guides/embeddings/embedding-models). Provided via API
   - **Sentence Transformers (a.k.a SBERT)** - state-of-the-art text and image embedding models, applicable for a wide range of tasks, such as *semantic textual similarity*, semantic search, clustering, classification, paraphrase mining, and more with dimentionality up tp 4K (https://sbert.net/)
   - **Cohere** - provides separate embedding model for english and multilingual text via API, that also features *embeddings purpose* parameter for embedding endpoints and has *Classification* endpoint that allows to classify the text based on examples given (https://docs.cohere.com/docs/models#embed)
-  - **Llama 3.\*** - new state-of-the-art generic purpose model from Meta available in 8B, 70B and 405B parameter sizes (https://ollama.com/library/llama3.1)
+  - **Llama Family** - state-of-the-art generic purpose model from Meta available in various parameter sizes (https://www.llama.com/)
   - **Voyage AI** (Anthropic) - embedding model that is offered by *Anthropic*, provides state-of-the-art embedding models and offers customized models for specific industry domains such as finance(`voyage-finance-2`), law (`voyage-law-2`), healthcare and code (`voyage-code-2`). Its family has models with up to 1536 dimensions and 16K context size with purpose of text and code retreival (https://docs.anthropic.com/en/docs/build-with-claude/embeddings)
   - **Gemini** - provides embeddings models (`text-embedding-004`) for words, phrases, and sentences(https://ai.google.dev/gemini-api/docs/embeddings)
 
-While *OpenAI*, *Cohere*, *Voyage AI*, *Gemini* and some other vendors provide embeddings via API, there are also open-source projects that allow to run embeddings on your local machine or in the cloud
+While *OpenAI*, *Cohere*, *Voyage AI*, *Gemini* and some other vendors provide embeddings via inference API, there are also open-source projects that allow to run inference on your local machine or in the cloud
   - **Ollama** - is an open-source project that serves a for running LLMs on your local machine and provides possibility to pull a variaty of models (https://ollama.com/library)
-  - **Hugging Face** - provides a wide range of machine learning models, including embeddings models (https://huggingface.co/models) that can be run on your local machine wih help of libraries or in the cloud via inference API
+  - **Hugging Face** - provides a wide range of open source models, including embeddings models (https://huggingface.co/models) that can be run via inference API with help of HF libraries
+  - **Github Models** - provides a wide range of machine learning models (https://github.com/marketplace/models) that can be used via playground in the browser or run within [VSCode AI Toolkit](https://github.com/microsoft/vscode-ai-toolkit) Extension or CLI
 
 ### Advanced Indexing Strategies 
 
@@ -259,8 +260,10 @@ In order to improve quality of the search results, we can use advanced indexing 
   (e.g. summarize large text, table data, image descriptions provided by LLM) to embed into vector index while keeping reference to raw data
   - Multi-Model indexing - use multiple models to index the data, i.e. use SBERT for text, Codellama for code, etc.
   - Metadata Extraction - extract metadata from the documents and use it for filtering and ranking
+  - Keyword Extraction - extract keywords from the query and use them for keyword search
   - Named Entity Recognition - extract named entities from the documents and set up relations between them for better understanding of data
-  - Document Intelligence - preprocess data with AI (e.g. table detection, html removal, etc.)  
+  - Document Intelligence - preprocess data with AI (e.g. table detection, html removal, etc.)
+  - Knowledge Graph - create a knowledge graph from the documents and use it for better understanding of the data  
 
 ## Data Retrieval
 <br>
@@ -408,12 +411,14 @@ Some common vector stores
 
 ## LLMs
 
-### API based
+### Proprietary API
   - OpenAI (GPT-*)
   - Anthropic (Claude)
   - Google (Gemini)
   - Cohere
-  - HuggingFace
+
+### Inference API
+  - Hugging Face
   - Cloud services (Azure Open AI, Amazon Bedrock)
 
 ### Local
@@ -515,9 +520,19 @@ For evaulation of RAG systems we can use some of the most popular tools and fram
   - **RaLLe** - accessible framework for developing and evaluating retrieval-augmented large language models(https://github.com/yhoshi3/RaLLe)
   - **ARES** - Automated Evaluation Framework for Retrieval-Augmented Generation Systems (https://github.com/stanford-futuredata/ARES)
 
+### Evaluation process
+https://huggingface.co/learn/cookbook/rag_evaluation
+
+https://m365playground.prod.substrateai.microsoft.net/eval 
+
+https://seval.microsoft.com/ 
+
 
 ## Graph RAG
 https://microsoft.github.io/graphrag/ 
+
+## Responsible AI
+https://learningpath.microsoft.com/7306
 
 ## Explore Python Workbook
 
